@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Studio</title>
+    <script src="https://js.puter.com/v2/"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Google Sans', sans-serif; }
+        .gemini-gradient {
+            background: linear-gradient(75deg, #4285f4 0%, #34a853 25%, #fbbc05 50%, #ea4335 75%, #4285f4 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .chat-container { height: calc(100vh - 220px); }
+        .message-bubble { transition: all 0.2s ease-in-out; }
+        .typing-cursor::after {
+            content: "▋";
+            animation: blink 1s step-start infinite;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+        .generated-media {
+            width: 100%;
+            border-radius: 16px;
+            margin-top: 12px;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-[#f8f9fa] text-[#1f1f1f]">
+
+    <div class="max-w-5xl mx-auto h-screen flex flex-col px-4 pt-6">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-white shadow-sm border border-slate-200 rounded-full flex items-center justify-center">
+                    <svg class="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/></svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight"> <span class="gemini-gradient">AI Studio</span></h1>
+                    <p class="text-xs text-slate-500 font-medium uppercase tracking-widest">Advanced Intelligence</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2 bg-white p-1 rounded-full shadow-sm border border-slate-200">
+                <select id="modeSelect" class="text-sm font-medium border-none rounded-full px-4 py-2 focus:ring-0 cursor-pointer hover:bg-slate-50">
+                    <option value="chat">✨ Chat</option>
+                    <option value="draw">🎨 Create</option>
+                    <option value="code">💻 Codex</option>
+                    <option value="vision">👁️ Vision</option>
+                </select>
+                <div class="h-6 w-[1px] bg-slate-200"></div>
+                <select id="modelSelect" class="text-sm font-medium border-none rounded-full px-4 py-2 focus:ring-0 cursor-pointer hover:bg-slate-50">
+                    <option value="gpt-5-mini">GPT-5 Mini</option>
+                    <option value="claude-3-5-sonnet">Claude 3.5</option>
+                    <option value="gemini-2.0-flash">Gemini 2.0</option>
+                    <option value="openrouter:openai/gpt-5.1-codex-max">Codex Max</option>
+                </select>
+            </div>
+        </header>
+
+        <!-- Chat Area -->
+        <main id="chatWindow" class="flex-grow overflow-y-auto space-y-6 mb-6 px-2 md:px-12 chat-container">
+            <!-- Welcome State -->
+            <div id="welcomeState" class="flex flex-col items-center justify-center h-full text-center space-y-4">
+                <h2 class="text-4xl font-medium text-slate-800">Hello, how can I help?</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 w-full max-w-4xl pt-8">
+                    <button onclick="quickAction('Generate a code for a React weather app')" class="p-4 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 text-sm text-left transition-all">
+                        <span class="block mb-2 text-blue-600 font-bold">Codex</span>
+                        React weather app...
+                    </button>
+                    <button onclick="quickAction('Analyze this image: https://assets.puter.site/doge.jpeg')" class="p-4 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 text-sm text-left transition-all">
+                        <span class="block mb-2 text-green-600 font-bold">Vision</span>
+                        Analyze image content...
+                    </button>
+                    <button onclick="quickAction('Create an image of a cyberpunk cafe')" class="p-4 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 text-sm text-left transition-all">
+                        <span class="block mb-2 text-yellow-600 font-bold">Draw</span>
+                        Generate artwork...
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Input Bar -->
+        <div class="max-w-4xl mx-auto w-full pb-8">
+            <form id="chatForm" class="relative bg-white rounded-[28px] shadow-lg border border-slate-200 focus-within:ring-1 focus-within:ring-blue-400 transition-all p-2 pr-4">
+                <div class="flex items-center gap-2 pl-4">
+                    <button type="button" id="uploadBtn" title="Analyze image" class="p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    </button>
+                    <textarea 
+                        id="userInput" 
+                        rows="1"
+                        placeholder="Ask me anything..." 
+                        class="w-full py-3 bg-transparent border-none focus:ring-0 text-lg resize-none max-h-48 overflow-y-auto"
+                    ></textarea>
+                    <button 
+                        type="submit" 
+                        id="sendBtn"
+                        class="p-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-30 shadow-md transition-all flex-shrink-0"
+                    >
+                        <svg class="w-5 h-5 transform rotate-90" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" /></svg>
+                    </button>
+                </div>
+            </form>
+            <p id="intentHint" class="text-[10px] text-center mt-3 text-slate-400 font-medium italic">Auto-detecting your intent...</p>
+        </div>
+    </div>
+
+    <script>
+        const chatWindow = document.getElementById('chatWindow');
+        const welcomeState = document.getElementById('welcomeState');
+        const chatForm = document.getElementById('chatForm');
+        const userInput = document.getElementById('userInput');
+        const modeSelect = document.getElementById('modeSelect');
+        const modelSelect = document.getElementById('modelSelect');
+        const sendBtn = document.getElementById('sendBtn');
+        const intentHint = document.getElementById('intentHint');
+
+        let messageHistory = [];
+
+        // Keywords for intent detection
+        const INTENTS = {
+            draw: ['generate an image', 'create an image', 'draw', 'paint', 'picture of', 'visual of'],
+            code: ['create a code', 'generate a code', 'write a script', 'python script', 'code for', 'programming'],
+            vision: ['analyze this', 'what is in this', 'describe this image', 'see this', 'image analysis']
+        };
+
+        function detectIntent(text) {
+            const lowerText = text.toLowerCase();
+            for (const [mode, keywords] of Object.entries(INTENTS)) {
+                if (keywords.some(k => lowerText.includes(k))) {
+                    return mode;
+                }
+            }
+            return 'chat';
+        }
+
+        // Handle Enter key for send, Shift+Enter for newline
+        userInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleChat();
+            }
+        });
+
+        userInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+            
+            // Real-time intent preview
+            const intent = detectIntent(this.value);
+            if (this.value.trim().length > 5) {
+                intentHint.textContent = `Intent detected: ${intent.toUpperCase()}`;
+                modeSelect.value = intent;
+            } else {
+                intentHint.textContent = "AI Studio can make mistakes. Check important info.";
+            }
+        });
+
+        function createMessageBubble(role) {
+            if (welcomeState) welcomeState.classList.add('hidden');
+            
+            const div = document.createElement('div');
+            div.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-4 duration-500`;
+            
+            const inner = document.createElement('div');
+            inner.className = `max-w-[85%] p-4 rounded-[20px] message-bubble ${
+                role === 'user' 
+                ? 'bg-[#e9eef6] text-[#1f1f1f] rounded-tr-none' 
+                : 'bg-transparent text-[#1f1f1f] rounded-tl-none border-none'
+            }`;
+            
+            if (role === 'assistant') {
+                const icon = document.createElement('div');
+                icon.className = "w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center mb-2 shadow-sm";
+                icon.innerHTML = `<svg class="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/></svg>`;
+                div.appendChild(icon);
+                inner.classList.add('pl-2');
+            }
+
+            div.appendChild(inner);
+            chatWindow.appendChild(div);
+            return inner;
+        }
+
+        async function handleChat(e) {
+            if(e) e.preventDefault();
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            // Auto-detect before processing
+            const detectedMode = detectIntent(text);
+            modeSelect.value = detectedMode;
+            
+            const mode = modeSelect.value;
+            const userBubble = createMessageBubble('user');
+            userBubble.textContent = text;
+            userInput.value = '';
+            userInput.style.height = 'auto';
+            intentHint.textContent = "AI Studio can make mistakes. Check important info.";
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+
+            sendBtn.disabled = true;
+
+            if (mode === 'draw') {
+                await handleImageGeneration(text);
+            } else if (mode === 'vision') {
+                await handleVision(text);
+            } else {
+                await handleTextChat(text, mode === 'code');
+            }
+
+            sendBtn.disabled = false;
+        }
+
+        async function handleTextChat(text, isCode) {
+            const aiBubble = createMessageBubble('assistant');
+            aiBubble.classList.add('typing-cursor');
+            
+            messageHistory.push({ role: 'user', content: text });
+            let fullAiContent = "";
+            const activeModel = isCode ? 'openrouter:openai/gpt-5.1-codex-max' : modelSelect.value;
+
+            try {
+                const responseStream = await puter.ai.chat(messageHistory, {
+                    model: activeModel,
+                    stream: true
+                });
+
+                for await (const chunk of responseStream) {
+                    if (chunk?.text) {
+                        fullAiContent += chunk.text;
+                        aiBubble.innerHTML = fullAiContent.replace(/\n/g, '<br>').replace(/`([^`]+)`/g, '<code class="bg-slate-100 p-1 rounded">$1</code>');
+                        chatWindow.scrollTop = chatWindow.scrollHeight;
+                    }
+                }
+                messageHistory.push({ role: 'assistant', content: fullAiContent });
+            } catch (err) {
+                aiBubble.textContent = "Error: " + err.message;
+            } finally {
+                aiBubble.classList.remove('typing-cursor');
+            }
+        }
+
+        async function handleImageGeneration(prompt) {
+            const aiBubble = createMessageBubble('assistant');
+            aiBubble.innerHTML = `<div class="flex items-center gap-2 text-slate-400 italic text-sm">Generating visualization...</div>`;
+
+            try {
+                const imgElement = await puter.ai.txt2img(prompt, { model: 'gpt-image-1.5' });
+                aiBubble.innerHTML = `<p class="text-xs font-bold text-slate-400 mb-2 uppercase tracking-tighter">Studio Render</p>`;
+                imgElement.classList.add('generated-media');
+                aiBubble.appendChild(imgElement);
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+            } catch (err) {
+                aiBubble.innerHTML = `<span class="text-red-500 italic">Generation error: ${err.message}</span>`;
+            }
+        }
+
+        async function handleVision(input) {
+            const aiBubble = createMessageBubble('assistant');
+            aiBubble.innerHTML = `<div class="flex items-center gap-2 text-slate-400 italic text-sm">Analyzing vision data...</div>`;
+
+            try {
+                const isUrl = input.match(/\.(jpeg|jpg|gif|png|webp)/i) || input.includes('http');
+                let result;
+                if (isUrl) {
+                    const urlMatch = input.match(/https?:\/\/[^\s]+/);
+                    const url = urlMatch ? urlMatch[0] : input;
+                    result = await puter.ai.img2txt(url);
+                } else {
+                    result = "Please provide an image URL to analyze in Vision mode.";
+                }
+                aiBubble.innerHTML = `<p class="text-xs font-bold text-slate-400 mb-2 uppercase tracking-tighter">Vision Report</p><div class="text-slate-700">${result}</div>`;
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+            } catch (err) {
+                aiBubble.innerHTML = `<span class="text-red-500 italic">Vision error: ${err.message}</span>`;
+            }
+        }
+
+        function quickAction(text) {
+            userInput.value = text;
+            handleChat();
+        }
+
+        chatForm.addEventListener('submit', handleChat);
+        
+        modeSelect.onchange = () => {
+            const hints = {
+                'chat': 'Ask me anything...',
+                'draw': 'Describe an image to generate...',
+                'code': 'Describe a coding task or paste code...',
+                'vision': 'Paste an image URL to analyze...'
+            };
+            userInput.placeholder = hints[modeSelect.value];
+        };
+    </script>
+</body>
+</html>
