@@ -107,7 +107,7 @@
                     </button>
                 </div>
             </form>
-            <p id="intentHint" class="text-[10px] text-center mt-3 text-slate-400 font-medium italic">Auto-detecting your intent...</p>
+            <p id="intentHint" class="text-[10px] text-center mt-3 text-slate-400 font-medium italic">AI Studio can make mistakes. Please double check.</p>
         </div>
     </div>
 
@@ -202,7 +202,7 @@
             userBubble.textContent = text;
             userInput.value = '';
             userInput.style.height = 'auto';
-            intentHint.textContent = "AI Studio can make mistakes. Check important info.";
+            intentHint.textContent = "Puter Studio can make mistakes. Check important info.";
             chatWindow.scrollTop = chatWindow.scrollHeight;
 
             sendBtn.disabled = true;
@@ -256,6 +256,27 @@
                 aiBubble.innerHTML = `<p class="text-xs font-bold text-slate-400 mb-2 uppercase tracking-tighter">Studio Render</p>`;
                 imgElement.classList.add('generated-media');
                 aiBubble.appendChild(imgElement);
+
+                // Add Download Button
+                const downloadContainer = document.createElement('div');
+                downloadContainer.className = "mt-3 flex justify-start";
+                
+                const downloadBtn = document.createElement('button');
+                downloadBtn.className = "flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors shadow-sm";
+                downloadBtn.innerHTML = `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg> Download Image`;
+                
+                downloadBtn.onclick = () => {
+                    const link = document.createElement('a');
+                    link.href = imgElement.src;
+                    link.download = `puter-studio-${Date.now()}.png`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                };
+
+                downloadContainer.appendChild(downloadBtn);
+                aiBubble.appendChild(downloadContainer);
+
                 chatWindow.scrollTop = chatWindow.scrollHeight;
             } catch (err) {
                 aiBubble.innerHTML = `<span class="text-red-500 italic">Generation error: ${err.message}</span>`;
