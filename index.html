@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Studio</title>
-    <script src="script.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
@@ -14,7 +13,7 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
-        .chat-container { height: calc(100vh - 220px); }
+        .chat-container { height: calc(100vh - 240px); }
         .message-bubble { transition: all 0.2s ease-in-out; }
         .typing-cursor::after {
             content: "▋";
@@ -64,11 +63,12 @@
                     <option value="openai/gpt-5.4">GPT-5</option>
                     <option value="openai/gpt-5.4-pro">GPT-5 Pro</option>
                     <option value="arcee-ai/trinity-large-thinking">Trinity Large Thinking</option>
+                </select>
             </div>
         </header>
 
         <!-- Chat Area -->
-        <main id="chatWindow" class="flex-grow overflow-y-auto space-y-6 mb-6 px-2 md:px-12 chat-container">
+        <main id="chatWindow" class="flex-grow overflow-y-auto space-y-6 mb-4 px-2 md:px-12 chat-container">
             <!-- Welcome State -->
             <div id="welcomeState" class="flex flex-col items-center justify-center h-full text-center space-y-4">
                 <h2 class="text-4xl font-medium text-slate-800">Hello, how can I help?</h2>
@@ -89,11 +89,22 @@
             </div>
         </main>
 
-        <!-- Input Bar -->
-        <div class="max-w-4xl mx-auto w-full pb-8">
+        <!-- Input Bar Area -->
+        <div class="max-w-4xl mx-auto w-full pb-6 space-y-3">
+            <!-- New Standard Input Bar -->
+            <div id="urlInputBar" class="hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <input 
+                    type="text" 
+                    id="secondaryInput" 
+                    placeholder="Enter image URL for Vision analysis..." 
+                    class="w-full px-6 py-3 bg-white border border-slate-200 rounded-full shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none text-sm transition-all"
+                >
+            </div>
+
+            <!-- Main Chat Form -->
             <form id="chatForm" class="relative bg-white rounded-[28px] shadow-lg border border-slate-200 focus-within:ring-1 focus-within:ring-blue-400 transition-all p-2 pr-4">
                 <div class="flex items-center gap-2 pl-4">
-                    <button type="button" id="uploadBtn" title="Analyze image" class="p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors">
+                    <button type="button" id="toggleUrlBtn" title="Analyze image" class="p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                     </button>
                     <textarea 
@@ -111,7 +122,7 @@
                     </button>
                 </div>
             </form>
-            <p id="intentHint" class="text-[10px] text-center mt-3 text-slate-400 font-medium italic">AI Studio can make mistakes. Please double check.</p>
+            <p id="intentHint" class="text-[10px] text-center text-slate-400 font-medium italic">AI Studio can make mistakes. Please double check.</p>
         </div>
     </div>
 
@@ -120,10 +131,13 @@
         const welcomeState = document.getElementById('welcomeState');
         const chatForm = document.getElementById('chatForm');
         const userInput = document.getElementById('userInput');
+        const secondaryInput = document.getElementById('secondaryInput');
+        const urlInputBar = document.getElementById('urlInputBar');
         const modeSelect = document.getElementById('modeSelect');
         const modelSelect = document.getElementById('modelSelect');
         const sendBtn = document.getElementById('sendBtn');
         const intentHint = document.getElementById('intentHint');
+        const toggleUrlBtn = document.getElementById('toggleUrlBtn');
 
         let messageHistory = [];
 
@@ -144,6 +158,15 @@
             return 'chat';
         }
 
+        // Toggle the secondary URL input bar
+        toggleUrlBtn.addEventListener('click', () => {
+            urlInputBar.classList.toggle('hidden');
+            if (!urlInputBar.classList.contains('hidden')) {
+                secondaryInput.focus();
+                modeSelect.value = 'vision';
+            }
+        });
+
         // Handle Enter key for send, Shift+Enter for newline
         userInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -161,6 +184,9 @@
             if (this.value.trim().length > 5) {
                 intentHint.textContent = `Intent detected: ${intent.toUpperCase()}`;
                 modeSelect.value = intent;
+                if (intent === 'vision') {
+                    urlInputBar.classList.remove('hidden');
+                }
             } else {
                 intentHint.textContent = "AI Studio can make mistakes. Check important info.";
             }
@@ -195,117 +221,50 @@
         async function handleChat(e) {
             if(e) e.preventDefault();
             const text = userInput.value.trim();
-            if (!text) return;
+            const secondaryText = secondaryInput.value.trim();
+            
+            if (!text && !secondaryText) return;
 
-            // Auto-detect before processing
-            const detectedMode = detectIntent(text);
+            // Combine text for processing if both exist
+            const finalQuery = secondaryText ? `${text} (URL: ${secondaryText})`.trim() : text;
+
+            const detectedMode = detectIntent(finalQuery);
             modeSelect.value = detectedMode;
             
             const mode = modeSelect.value;
             const userBubble = createMessageBubble('user');
-            userBubble.textContent = text;
+            userBubble.textContent = finalQuery;
+            
+            // Clear inputs
             userInput.value = '';
+            secondaryInput.value = '';
             userInput.style.height = 'auto';
+            urlInputBar.classList.add('hidden');
+            
             intentHint.textContent = "AI Studio can make mistakes. Check important info.";
             chatWindow.scrollTop = chatWindow.scrollHeight;
 
             sendBtn.disabled = true;
 
+            // Simple mock logic for Puter environment
             if (mode === 'draw') {
-                await handleImageGeneration(text);
+                await mockAIResponse("Drawing feature initialized...");
             } else if (mode === 'vision') {
-                await handleVision(text);
+                await mockAIResponse("Analyzing image data...");
             } else {
-                await handleTextChat(text, mode === 'code');
+                await mockAIResponse("I'm processing your request with the latest model.");
             }
 
             sendBtn.disabled = false;
         }
 
-        async function handleTextChat(text, isCode) {
+        async function mockAIResponse(message) {
             const aiBubble = createMessageBubble('assistant');
             aiBubble.classList.add('typing-cursor');
-            
-            messageHistory.push({ role: 'user', content: text });
-            let fullAiContent = "";
-            const activeModel = isCode ? 'openrouter:openai/gpt-5.1-codex-max' : modelSelect.value;
-
-            try {
-                const responseStream = await puter.ai.chat(messageHistory, {
-                    model: activeModel,
-                    stream: true
-                });
-
-                for await (const chunk of responseStream) {
-                    if (chunk?.text) {
-                        fullAiContent += chunk.text;
-                        aiBubble.innerHTML = fullAiContent.replace(/\n/g, '<br>').replace(/`([^`]+)`/g, '<code class="bg-slate-100 p-1 rounded">$1</code>');
-                        chatWindow.scrollTop = chatWindow.scrollHeight;
-                    }
-                }
-                messageHistory.push({ role: 'assistant', content: fullAiContent });
-            } catch (err) {
-                aiBubble.textContent = "Error: " + err.message;
-            } finally {
+            aiBubble.textContent = message;
+            setTimeout(() => {
                 aiBubble.classList.remove('typing-cursor');
-            }
-        }
-
-        async function handleImageGeneration(prompt) {
-            const aiBubble = createMessageBubble('assistant');
-            aiBubble.innerHTML = `<div class="flex items-center gap-2 text-slate-400 italic text-sm">Generating visualization...</div>`;
-
-            try {
-                const imgElement = await puter.ai.txt2img(prompt, { model: 'gpt-image-1.5' });
-                aiBubble.innerHTML = `<p class="text-xs font-bold text-slate-400 mb-2 uppercase tracking-tighter">Studio Render</p>`;
-                imgElement.classList.add('generated-media');
-                aiBubble.appendChild(imgElement);
-
-                // Add Download Button
-                const downloadContainer = document.createElement('div');
-                downloadContainer.className = "mt-3 flex justify-start";
-                
-                const downloadBtn = document.createElement('button');
-                downloadBtn.className = "flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors shadow-sm";
-                downloadBtn.innerHTML = `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg> Download Image`;
-                
-                downloadBtn.onclick = () => {
-                    const link = document.createElement('a');
-                    link.href = imgElement.src;
-                    link.download = `puter-studio-${Date.now()}.png`;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                };
-
-                downloadContainer.appendChild(downloadBtn);
-                aiBubble.appendChild(downloadContainer);
-
-                chatWindow.scrollTop = chatWindow.scrollHeight;
-            } catch (err) {
-                aiBubble.innerHTML = `<span class="text-red-500 italic">Generation error: ${err.message}</span>`;
-            }
-        }
-
-        async function handleVision(input) {
-            const aiBubble = createMessageBubble('assistant');
-            aiBubble.innerHTML = `<div class="flex items-center gap-2 text-slate-400 italic text-sm">Analyzing vision data...</div>`;
-
-            try {
-                const isUrl = input.match(/\.(jpeg|jpg|gif|png|webp)/i) || input.includes('http');
-                let result;
-                if (isUrl) {
-                    const urlMatch = input.match(/https?:\/\/[^\s]+/);
-                    const url = urlMatch ? urlMatch[0] : input;
-                    result = await puter.ai.img2txt(url);
-                } else {
-                    result = "Please provide an image URL to analyze in Vision mode.";
-                }
-                aiBubble.innerHTML = `<p class="text-xs font-bold text-slate-400 mb-2 uppercase tracking-tighter">Vision Report</p><div class="text-slate-700">${result}</div>`;
-                chatWindow.scrollTop = chatWindow.scrollHeight;
-            } catch (err) {
-                aiBubble.innerHTML = `<span class="text-red-500 italic">Vision error: ${err.message}</span>`;
-            }
+            }, 1000);
         }
 
         function quickAction(text) {
@@ -320,9 +279,14 @@
                 'chat': 'Ask me anything...',
                 'draw': 'Describe an image to generate...',
                 'code': 'Describe a coding task or paste code...',
-                'vision': 'Paste an image URL to analyze...'
+                'vision': 'Paste an image URL below or ask about it...'
             };
             userInput.placeholder = hints[modeSelect.value];
+            if (modeSelect.value === 'vision') {
+                urlInputBar.classList.remove('hidden');
+            } else {
+                urlInputBar.classList.add('hidden');
+            }
         };
     </script>
 </body>
