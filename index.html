@@ -264,13 +264,27 @@
             sendBtn.disabled = false;
         }
 
+        // Helper to escape HTML to prevent browser rendering
+        function escapeHTML(str) {
+            return str.replace(/[&<>"']/g, function(m) {
+                switch (m) {
+                    case '&': return '&amp;';
+                    case '<': return '&lt;';
+                    case '>': return '&gt;';
+                    case '"': return '&quot;';
+                    case "'": return '&#039;';
+                    default: return m;
+                }
+            });
+        }
+
         async function handleTextChat(text, isCode) {
             const aiBubble = createMessageBubble('assistant');
             aiBubble.classList.add('typing-cursor');
             
             messageHistory.push({ role: 'user', content: text });
             let fullAiContent = "";
-            const activeModel = isCode ? 'openrouter:openai/gpt-5.1-codex-max' : modelSelect.value;
+            const activeModel = modelSelect.value;
 
             try {
                 const responseStream = await puter.ai.chat(messageHistory, {
@@ -281,7 +295,12 @@
                 for await (const chunk of responseStream) {
                     if (chunk?.text) {
                         fullAiContent += chunk.text;
-                        aiBubble.innerHTML = fullAiContent.replace(/\n/g, '<br>').replace(/`([^`]+)`/g, '<code class="bg-slate-100 p-1 rounded">$1</code>');
+                        // Escape HTML to display as plain text and preserve formatting
+                        const safeContent = escapeHTML(fullAiContent)
+                            .replace(/\n/g, '<br>')
+                            .replace(/`([^`]+)`/g, '<code class="bg-slate-100 p-1 rounded">$1</code>');
+                        
+                        aiBubble.innerHTML = safeContent;
                         chatWindow.scrollTop = chatWindow.scrollHeight;
                     }
                 }
@@ -339,7 +358,7 @@
                 }
 
                 const result = await puter.ai.img2txt(url);
-                aiBubble.innerHTML = `<p class="text-xs font-bold text-slate-400 mb-2 uppercase tracking-tighter">Vision Report</p><div class="text-slate-700">${result}</div>`;
+                aiBubble.innerHTML = `<p class="text-xs font-bold text-slate-400 mb-2 uppercase tracking-tighter">Vision Report</p><div class="text-slate-700">${escapeHTML(result)}</div>`;
                 chatWindow.scrollTop = chatWindow.scrollHeight;
             } catch (err) {
                 aiBubble.innerHTML = `<span class="text-red-500 italic">Vision error: ${err.message}</span>`;
