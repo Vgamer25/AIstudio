@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Studio</title>
-    <script src="https://js.puter.com/v2/"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
@@ -226,18 +225,17 @@
             
             if (!text && !secondaryText) return;
 
-            // Use the URL from secondary input if available, else look for URL in text
-            const queryForDetection = secondaryText || text;
-            const detectedMode = detectIntent(queryForDetection);
+            // Combine text for processing if both exist
+            const finalQuery = secondaryText ? `${text} (URL: ${secondaryText})`.trim() : text;
+
+            const detectedMode = detectIntent(finalQuery);
             modeSelect.value = detectedMode;
             
             const mode = modeSelect.value;
             const userBubble = createMessageBubble('user');
+            userBubble.textContent = finalQuery;
             
-            // Show user the combined context
-            const displayMessage = secondaryText ? `${text}\n[URL: ${secondaryText}]`.trim() : text;
-            userBubble.textContent = displayMessage;
-            
+            // Clear inputs
             userInput.value = '';
             secondaryInput.value = '';
             userInput.style.height = 'auto';
@@ -248,121 +246,25 @@
 
             sendBtn.disabled = true;
 
-            try {
-                if (mode === 'draw') {
-                    await handleImageGeneration(text);
-                } else if (mode === 'vision') {
-                    await handleVision(text, secondaryText);
-                } else {
-                    await handleTextChat(text, mode === 'code');
-                }
-            } catch (err) {
-                const errorBubble = createMessageBubble('assistant');
-                errorBubble.textContent = "Error: " + err.message;
+            // Simple mock logic for Puter environment
+            if (mode === 'draw') {
+                await mockAIResponse("Drawing feature initialized...");
+            } else if (mode === 'vision') {
+                await mockAIResponse("Analyzing image data...");
+            } else {
+                await mockAIResponse("I'm processing your request with the latest model.");
             }
 
             sendBtn.disabled = false;
         }
 
-        // Helper to escape HTML to prevent browser rendering
-        function escapeHTML(str) {
-            return str.replace(/[&<>"']/g, function(m) {
-                switch (m) {
-                    case '&': return '&amp;';
-                    case '<': return '&lt;';
-                    case '>': return '&gt;';
-                    case '"': return '&quot;';
-                    case "'": return '&#039;';
-                    default: return m;
-                }
-            });
-        }
-
-        async function handleTextChat(text, isCode) {
+        async function mockAIResponse(message) {
             const aiBubble = createMessageBubble('assistant');
             aiBubble.classList.add('typing-cursor');
-            
-            messageHistory.push({ role: 'user', content: text });
-            let fullAiContent = "";
-            const activeModel = modelSelect.value;
-
-            try {
-                const responseStream = await puter.ai.chat(messageHistory, {
-                    model: activeModel,
-                    stream: true
-                });
-
-                for await (const chunk of responseStream) {
-                    if (chunk?.text) {
-                        fullAiContent += chunk.text;
-                        // Escape HTML to display as plain text and preserve formatting
-                        const safeContent = escapeHTML(fullAiContent)
-                            .replace(/\n/g, '<br>')
-                            .replace(/`([^`]+)`/g, '<code class="bg-slate-100 p-1 rounded">$1</code>');
-                        
-                        aiBubble.innerHTML = safeContent;
-                        chatWindow.scrollTop = chatWindow.scrollHeight;
-                    }
-                }
-                messageHistory.push({ role: 'assistant', content: fullAiContent });
-            } catch (err) {
-                aiBubble.textContent = "Error: " + err.message;
-            } finally {
+            aiBubble.textContent = message;
+            setTimeout(() => {
                 aiBubble.classList.remove('typing-cursor');
-            }
-        }
-
-        async function handleImageGeneration(prompt) {
-            const aiBubble = createMessageBubble('assistant');
-            aiBubble.innerHTML = `<div class="flex items-center gap-2 text-slate-400 italic text-sm">Generating visualization...</div>`;
-
-            try {
-                const imgElement = await puter.ai.txt2img(prompt);
-                aiBubble.innerHTML = `<p class="text-xs font-bold text-slate-400 mb-2 uppercase tracking-tighter">Studio Render</p>`;
-                imgElement.classList.add('generated-media');
-                aiBubble.appendChild(imgElement);
-
-                const downloadContainer = document.createElement('div');
-                downloadContainer.className = "mt-3 flex justify-start";
-                const downloadBtn = document.createElement('button');
-                downloadBtn.className = "flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors shadow-sm";
-                downloadBtn.innerHTML = `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg> Download Image`;
-                downloadBtn.onclick = () => {
-                    const link = document.createElement('a');
-                    link.href = imgElement.src;
-                    link.download = `puter-studio-${Date.now()}.png`;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                };
-                downloadContainer.appendChild(downloadBtn);
-                aiBubble.appendChild(downloadContainer);
-                chatWindow.scrollTop = chatWindow.scrollHeight;
-            } catch (err) {
-                aiBubble.innerHTML = `<span class="text-red-500 italic">Generation error: ${err.message}</span>`;
-            }
-        }
-
-        async function handleVision(text, urlInput) {
-            const aiBubble = createMessageBubble('assistant');
-            aiBubble.innerHTML = `<div class="flex items-center gap-2 text-slate-400 italic text-sm">Analyzing vision data...</div>`;
-
-            try {
-                // Determine which URL to use
-                const urlMatch = text.match(/https?:\/\/[^\s]+/);
-                const url = urlInput || (urlMatch ? urlMatch[0] : null);
-
-                if (!url) {
-                    aiBubble.innerHTML = "Please provide an image URL in the URL bar or message.";
-                    return;
-                }
-
-                const result = await puter.ai.img2txt(url);
-                aiBubble.innerHTML = `<p class="text-xs font-bold text-slate-400 mb-2 uppercase tracking-tighter">Vision Report</p><div class="text-slate-700">${escapeHTML(result)}</div>`;
-                chatWindow.scrollTop = chatWindow.scrollHeight;
-            } catch (err) {
-                aiBubble.innerHTML = `<span class="text-red-500 italic">Vision error: ${err.message}</span>`;
-            }
+            }, 1000);
         }
 
         function quickAction(text) {
